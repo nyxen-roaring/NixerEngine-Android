@@ -93,7 +93,6 @@ class BioGalleryState extends MusicBeatState
 		// ---- Fondo ----
 		var bg:FlxSprite = Neon.gradient(ww, FlxG.height);
 		bg.x = wx;
-		bg.scrollFactor.set();
 		add(bg);
 		add(Neon.scanlines(ww, FlxG.height, wx));
 
@@ -122,7 +121,6 @@ class BioGalleryState extends MusicBeatState
 		add(infoPanel);
 
 		portrait = new FlxSprite();
-		portrait.scrollFactor.set();
 		add(portrait);
 
 		noImageText = Neon.styleText(new FlxText(portraitPanel.x, portraitPanel.y + 160, portraitPanel.width, 'SIN IMAGEN'), Neon.DIM, 22);
@@ -169,7 +167,6 @@ class BioGalleryState extends MusicBeatState
 		for (i in 0...bios.length)
 		{
 			var ic:HealthIcon = new HealthIcon(bios[i].icon);
-			ic.scrollFactor.set();
 			add(ic);
 			icons.push(ic);
 			iconCX.push(FlxG.width / 2 + (i - curSelected) * ICON_SPACING);
@@ -350,7 +347,6 @@ class BioGalleryState extends MusicBeatState
 			bigIcon = null;
 		}
 		bigIcon = new HealthIcon(b.icon);
-		bigIcon.scrollFactor.set();
 		bigIcon.scale.set(0.6, 0.6);
 		bigIcon.updateHitbox();
 		bigIcon.setPosition(iconFrame.x + (iconFrame.width - bigIcon.width) / 2, iconFrame.y + (iconFrame.height - bigIcon.height) / 2);

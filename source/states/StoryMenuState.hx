@@ -516,15 +516,19 @@ class StoryMenuState extends MusicBeatState
 
 	function updateText()
 	{
-		var weekArray:Array<String> = getWeekChars(loadedWeeks[curWeek]);
+		var leWeek:WeekData = (curWeek >= 0 && curWeek < loadedWeeks.length) ? loadedWeeks[curWeek] : null;
+		var weekArray:Array<String> = getWeekChars(leWeek);
 		for (i in 0...grpWeekCharacters.length) {
-			grpWeekCharacters.members[i].changeCharacter(weekArray[i]);
+			var member:MenuCharacter = grpWeekCharacters.members[i];
+			if (member != null && i < weekArray.length) member.changeCharacter(weekArray[i]);
 		}
 
-		var leWeek:WeekData = loadedWeeks[curWeek];
 		var stringThing:Array<String> = [];
-		for (i in 0...leWeek.songs.length) {
-			stringThing.push(leWeek.songs[i][0]);
+		if (leWeek != null && leWeek.songs != null) {
+			for (i in 0...leWeek.songs.length) {
+				var song:Array<Dynamic> = leWeek.songs[i];
+				if (song != null && song.length > 0 && song[0] != null) stringThing.push(Std.string(song[0]));
+			}
 		}
 
 		txtTracklist.text = '';
@@ -539,7 +543,7 @@ class StoryMenuState extends MusicBeatState
 		txtTracklist.x -= FlxG.width * 0.35;
 
 		#if !switch
-		intendedScore = Highscore.getWeekScore(loadedWeeks[curWeek].fileName, curDifficulty);
+		if (leWeek != null) intendedScore = Highscore.getWeekScore(leWeek.fileName, curDifficulty);
 		#end
 	}
 }
