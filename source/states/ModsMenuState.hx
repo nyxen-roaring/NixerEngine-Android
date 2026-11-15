@@ -77,9 +77,17 @@ class ModsMenuState extends MusicBeatState
 		bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
 		bg.color = Neon.darken(0xFF665AFF);
 		bg.antialiasing = ClientPrefs.data.antialiasing;
+		var bgScale:Float = Math.max(Neon.wideW() / bg.width, FlxG.height / bg.height);
+		bg.setGraphicSize(Std.int(bg.width * bgScale));
+		bg.updateHitbox();
 		add(bg);
 		bg.screenCenter();
 		add(Neon.scanlines(Neon.wideW(), FlxG.height, Neon.wideX()));
+
+		// Barra de escaneo que baja por toda la pantalla
+		scanBar = new FlxSprite(Neon.wideX(), 0).makeGraphic(Neon.wideW(), 4, Neon.CYAN);
+		scanBar.alpha = 0.22;
+		add(scanBar);
 
 		bgList = Neon.panel(340, 440, Neon.MAGENTA);
 		bgList.setPosition(40, 40);
@@ -328,6 +336,7 @@ class ModsMenuState extends MusicBeatState
 		super.create();
 	}
 	
+	var scanBar:FlxSprite;
 	var nextAttempt:Float = 1;
 	var holdingMod:Bool = false;
 	var mouseOffsets:FlxPoint = new FlxPoint();
@@ -338,6 +347,13 @@ class ModsMenuState extends MusicBeatState
 	var exiting:Bool = false;
 	override function update(elapsed:Float)
 	{
+		if (scanBar != null)
+		{
+			scanBar.y += 110 * elapsed;
+			if (scanBar.y > FlxG.height) scanBar.y = -4;
+			scanBar.alpha = 0.18 + 0.08 * Math.sin(scanBar.y * 0.05);
+		}
+
 		if(controls.BACK && hoveringOnMods && !exiting)
 		{
 			exiting = true;
