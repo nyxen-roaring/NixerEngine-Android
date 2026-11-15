@@ -9,6 +9,7 @@ import objects.CheckboxThingie;
 import objects.AttachedText;
 import options.Option;
 import backend.InputFormatter;
+import objects.Neon;
 
 class BaseOptionsMenu extends MusicBeatSubstate
 {
@@ -22,6 +23,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 
 	private var descBox:FlxSprite;
 	private var descText:FlxText;
+	private var descLine:FlxSprite;
 
 	public var title:String;
 	public var rpcTitle:String;
@@ -40,16 +42,12 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		DiscordClient.changePresence(rpcTitle, null);
 		#end
 		
-		bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
-		bg.color = 0xFFea71fd;
-		// El fondo cubre todo el ancho de la pantalla (pantalla ancha)
-		var wideW:Float = FlxG.width + mobile.backend.MobileScaleMode.gameCutoutSize.x * 2;
-		var bgScale:Float = Math.max(wideW / bg.width, FlxG.height / bg.height);
-		bg.setGraphicSize(Std.int(bg.width * bgScale));
-		bg.updateHitbox();
-		bg.screenCenter();
-		bg.antialiasing = ClientPrefs.data.antialiasing;
+		// Fondo futurista: degradado neón + scanlines, cubre toda la pantalla ancha
+		bg = Neon.gradient(Neon.wideW(), FlxG.height);
+		bg.x = Neon.wideX();
+		bg.scrollFactor.set();
 		add(bg);
+		add(Neon.scanlines(Neon.wideW(), FlxG.height, Neon.wideX()));
 
 		// avoids lagspikes while scrolling through menus!
 		grpOptions = new FlxTypedGroup<Alphabet>();
@@ -61,17 +59,23 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		checkboxGroup = new FlxTypedGroup<CheckboxThingie>();
 		add(checkboxGroup);
 
-		descBox = new FlxSprite().makeGraphic(1, 1, FlxColor.BLACK);
-		descBox.alpha = 0.6;
+		descBox = new FlxSprite().makeGraphic(1, 1, 0xFF0B0A24);
+		descBox.alpha = 0.88;
 		add(descBox);
+		descLine = new FlxSprite().makeGraphic(1, 1, Neon.CYAN);
+		add(descLine);
 
 		var titleText:Alphabet = new Alphabet(75, 45, title, true);
 		titleText.setScale(0.6);
-		titleText.alpha = 0.4;
+		titleText.alpha = 0.9;
+		titleText.color = Neon.CYAN;
 		add(titleText);
+		var titleLine:FlxSprite = new FlxSprite(Neon.wideX() + 60, 100).makeGraphic(Neon.wideW() - 120, 3, Neon.MAGENTA);
+		titleLine.alpha = 0.8;
+		add(titleLine);
 
 		descText = new FlxText(50, 600, 1180, "", 32);
-		descText.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		descText.setFormat(Paths.font("vcr.ttf"), 32, Neon.TEXT, CENTER, FlxTextBorderStyle.OUTLINE, Neon.BLUE);
 		// (sin scrollFactor 0: así el texto y su caja se mueven juntos en pantalla ancha)
 		descText.borderSize = 2.4;
 		add(descText);
@@ -510,6 +514,9 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		descBox.setPosition(descText.x - 10, descText.y - 10);
 		descBox.setGraphicSize(Std.int(descText.width + 20), Std.int(descText.height + 25));
 		descBox.updateHitbox();
+		descLine.setPosition(descBox.x, descBox.y);
+		descLine.setGraphicSize(Std.int(descBox.width), 3);
+		descLine.updateHitbox();
 
 		curOption = optionsArray[curSelected];
 		FlxG.sound.play(Paths.sound('scrollMenu'));
