@@ -2,6 +2,7 @@ package states.editors;
 
 #if MODS_ALLOWED
 import backend.ui.*;
+import objects.Neon;
 
 /**
  * EDITOR DE CREDITOS
@@ -32,8 +33,10 @@ class CreditsEditorState extends MusicBeatState implements PsychUIEventHandler.P
 	{
 		FlxG.mouse.visible = true;
 
-		var bg:FlxSprite = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, 0xFF222222);
+		var bg:FlxSprite = Neon.gradient(Neon.wideW(), FlxG.height);
+		bg.x = Neon.wideX();
 		add(bg);
+		add(Neon.scanlines(Neon.wideW(), FlxG.height, Neon.wideX()));
 
 		ensureDir(folder());
 		load();

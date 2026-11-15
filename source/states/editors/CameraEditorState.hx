@@ -15,6 +15,7 @@ import haxe.Json;
 import openfl.utils.AssetType;
 import mobile.backend.MobileScaleMode;
 import mobile.backend.MobileData;
+import objects.Neon;
 
 typedef CamEvent = {
 	var group:Array<Dynamic>; // [tiempo, [[nombre, valor1, valor2], ...]]
@@ -45,7 +46,7 @@ class CameraEditorState extends MusicBeatState
 	static inline final LIST_TOP:Float = 150;
 	static inline final LIST_BOTTOM:Float = 690;
 	static inline final ACCENT:Int = 0xFF00F0FF;
-	static inline final ACCENT2:Int = 0xFFB000FF;
+	static inline final ACCENT2:Int = 0xFFFF2BD6;
 
 	static final CAM_NAMES:Array<String> = ['Camera Follow Pos', 'Add Camera Zoom', 'Screen Shake'];
 
@@ -191,9 +192,12 @@ class CameraEditorState extends MusicBeatState
 		FlxG.cameras.add(camWorld, false);
 		FlxG.cameras.add(camUI, false);
 
-		var bg:FlxSprite = MenuBG.create('menuDesat');
-		bg.color = 0xFF10163A;
+		var bg:FlxSprite = Neon.gradient(Std.int(W), Std.int(H));
+		bg.scrollFactor.set();
 		add(bg);
+		var scan:FlxSprite = Neon.scanlines(Std.int(W), Std.int(H), 0);
+		scan.scrollFactor.set();
+		add(scan);
 
 		buildWorld();
 		buildUI();

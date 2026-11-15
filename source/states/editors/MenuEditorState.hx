@@ -1,6 +1,7 @@
 package states.editors;
 
 import haxe.Json;
+import objects.Neon;
 #if HSCRIPT_ALLOWED
 import psychlua.HScript;
 #end
@@ -234,8 +235,10 @@ class MenuEditorState extends MusicBeatState
 	{
 		FlxG.mouse.visible = true;
 
-		var bg:FlxSprite = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, 0xFF222222);
+		var bg:FlxSprite = Neon.gradient(Neon.wideW(), FlxG.height);
+		bg.x = Neon.wideX();
 		add(bg);
+		add(Neon.scanlines(Neon.wideW(), FlxG.height, Neon.wideX()));
 
 		MenuLayout.prepareFolders();
 		scanImages();
@@ -269,12 +272,13 @@ class MenuEditorState extends MusicBeatState
 
 	function makeButton(text:String, index:Int, onTap:Void->Void)
 	{
-		var box:FlxSprite = new FlxSprite(FlxG.width - 190, 20 + index * 50).makeGraphic(170, 40, 0xCC000000);
+		var box:FlxSprite = Neon.panel(170, 40, Neon.accentFor(index));
+		box.setPosition(FlxG.width - 190, 20 + index * 50);
 		box.scrollFactor.set();
 		add(box);
 
 		var label:FlxText = new FlxText(box.x, box.y + 6, 170, text, 24);
-		label.setFormat(Paths.font('vcr.ttf'), 24, FlxColor.WHITE, CENTER);
+		label.setFormat(Paths.font('vcr.ttf'), 24, Neon.TEXT, CENTER, FlxTextBorderStyle.OUTLINE, Neon.accentFor(index));
 		label.scrollFactor.set();
 		add(label);
 

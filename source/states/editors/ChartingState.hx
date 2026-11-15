@@ -1,6 +1,7 @@
 package states.editors;
 
 import flixel.FlxSubState;
+import objects.Neon;
 import flixel.util.FlxSave;
 import flixel.util.FlxSort;
 import flixel.util.FlxSpriteUtil;
@@ -203,6 +204,11 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 	}
 
 	var bg:FlxSprite;
+	var neonBg:FlxSprite;
+	var neonScan:FlxSprite;
+	var camEditorBtn:FlxSprite;
+	var camEditorLabel:FlxText;
+	var camBtnT:Float = 0;
 	var theme:ChartingTheme = DEFAULT;
 
 	var copiedNotes:Array<Dynamic> = [];
@@ -245,6 +251,15 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		bg.antialiasing = ClientPrefs.data.antialiasing;
 		bg.scrollFactor.set();
 		add(bg);
+
+		// Fondo futurista (degradado neón + scanlines), cubre toda la pantalla ancha
+		neonBg = Neon.gradient(Neon.wideW(), FlxG.height);
+		neonBg.setPosition(0, 0);
+		neonBg.scrollFactor.set();
+		add(neonBg);
+		neonScan = Neon.scanlines(Neon.wideW(), FlxG.height, 0);
+		neonScan.scrollFactor.set();
+		add(neonScan);
 
 		if(chartEditorSave.data.autoSave != null) autoSaveCap = chartEditorSave.data.autoSave;
 		if(chartEditorSave.data.backupLimit != null) backupLimit = chartEditorSave.data.backupLimit;
@@ -547,6 +562,19 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		fullTipText.screenCenter();
 		add(fullTipText);
 		addTouchPad('LEFT_FULL', 'CHART_EDITOR');
+
+		// Botón rápido del editor de cámara (siempre visible, también en el celular)
+		camEditorBtn = Neon.panel(150, 40, Neon.CYAN);
+		camEditorBtn.setPosition(8, 8);
+		camEditorBtn.scrollFactor.set();
+		camEditorBtn.cameras = [camUI];
+		add(camEditorBtn);
+		camEditorLabel = Neon.styleText(new FlxText(8, 17, 150, 'CAMARA'), Neon.CYAN, 20);
+		camEditorLabel.alignment = CENTER;
+		camEditorLabel.scrollFactor.set();
+		camEditorLabel.cameras = [camUI];
+		add(camEditorLabel);
+
 		super.create();
 	}
 
@@ -585,6 +613,12 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 				bg.color = 0xFF303030;
 				gridColors = [0xFFDFDFDF, 0xFFBFBFBF];
 				gridColorsOther = [0xFF5F5F5F, 0xFF4A4A4A];
+		}
+
+		if (neonBg != null)
+		{
+			neonBg.visible = neonScan.visible = (theme == FUTURISTIC);
+			bg.visible = !neonBg.visible;
 		}
 
 		if(theme != oldTheme || theme == CUSTOM)
@@ -699,6 +733,8 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 			lastFocus = PsychUIInputText.focusOn;
 			return;
 		}
+
+		checkCameraButton(elapsed);
 
 		for (num => key in keysArray)
 			_keysPressedBuffer[num] = FlxG.keys.checkStatus(key, JUST_PRESSED);
@@ -5178,6 +5214,23 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		openSubState(new EditorPlayState(cast notes, [vocals, opponentVocals]));
 		upperBox.isMinimized = true;
 		upperBox.visible = mainBox.visible = infoBox.visible = false;
+	}
+
+	function checkCameraButton(elapsed:Float):Void
+	{
+		if (camEditorBtn == null) return;
+		camBtnT += elapsed;
+		camEditorBtn.alpha = camEditorLabel.alpha = 0.8 + 0.2 * Math.sin(camBtnT * 4);
+
+		var hit:Bool = FlxG.mouse.justPressed && FlxG.mouse.overlaps(camEditorBtn, camUI);
+		if (!hit)
+			for (t in FlxG.touches.list)
+				if (t.justPressed && t.overlaps(camEditorBtn, camUI)) hit = true;
+		if (hit)
+		{
+			FlxG.sound.play(Paths.sound('confirmMenu'), 0.6);
+			openCameraEditor();
+		}
 	}
 
 	// Abre el editor de cámara con el stage de esta canción y vuelve aquí al salir
