@@ -55,6 +55,7 @@ enum abstract ChartingTheme(String)
 	var DEFAULT = 'default';
 	var VSLICE = 'vslice';
 	var CUSTOM = 'custom';
+	var FUTURISTIC = 'futuristic';
 }
 
 enum abstract WaveformTarget(String)
@@ -255,7 +256,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		if(chartEditorSave.data.customNextGridColors == null || chartEditorSave.data.customNextGridColors.length < 2)
 			chartEditorSave.data.customNextGridColors = ['5F5F5F', '4A4A4A'];
 		
-		changeTheme(chartEditorSave.data.theme != null ? chartEditorSave.data.theme : DEFAULT, false);
+		changeTheme(chartEditorSave.data.theme != null ? chartEditorSave.data.theme : FUTURISTIC, false);
 
 		createGrids();
 
@@ -572,6 +573,10 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 				bg.color = 0xFF673AB7;
 				gridColors = [0xFFD0D0D0, 0xFFAFAFAF];
 				gridColorsOther = [0xFF595959, 0xFF464646];
+			case FUTURISTIC:
+				bg.color = 0xFF0B1030;
+				gridColors = [0xFF1D2C5E, 0xFF16234C];
+				gridColorsOther = [0xFF0D1330, 0xFF0A0F28];
 			case CUSTOM:
 				bg.color = CoolUtil.colorFromString(chartEditorSave.data.customBgColor);
 				gridColors = [CoolUtil.colorFromString(chartEditorSave.data.customGridColors[0]), CoolUtil.colorFromString(chartEditorSave.data.customGridColors[1])];
@@ -703,7 +708,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 			autoSaveTime += elapsed / 60.0;
 			//trace(autoSaveTime);
 			//#if debug if(FlxG.keys.justPressed.J) autoSaveTime += 20/60.0; #end
-			if(autoSaveTime >= autoSaveCap #if debug || FlxG.keys.justPressed.NUMPADMULTIPLY #end)
+			if((autoSaveTime >= autoSaveCap && !(FlxG.sound.music != null && FlxG.sound.music.playing)) #if debug || FlxG.keys.justPressed.NUMPADMULTIPLY #end)
 			{
 				FlxTween.cancelTweensOf(autoSaveIcon);
 				autoSaveTime = 0;
@@ -1161,42 +1166,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 				}
 				else if(touchPad.buttonV.justPressed || FlxG.keys.justPressed.Z != touchPad.buttonD.justPressed || FlxG.keys.justPressed.X) //Decrease/Increase Zoom
 				{
-					if(touchPad.buttonV.justPressed || FlxG.keys.justPressed.Z)
-						curZoom = zoomList[Std.int(Math.max(zoomList.indexOf(curZoom) - 1, 0))];
-					else
-						curZoom = zoomList[Std.int(Math.min(zoomList.indexOf(curZoom) + 1, zoomList.length - 1))];
-	
-					notes.sort(PlayState.sortByTime);
-					var noteSec:Int = 0;
-					var nextSectionTime:Float = cachedSectionTimes[noteSec + 1];
-					var curSectionTime:Float = cachedSectionTimes[noteSec];
-					for (num => note in notes)
-					{
-						if(note == null) continue;
-			
-						while(cachedSectionTimes[noteSec + 1] <= note.strumTime)
-						{
-							noteSec++;
-							nextSectionTime = cachedSectionTimes[noteSec + 1];
-							curSectionTime = cachedSectionTimes[noteSec];
-						}
-						positionNoteYOnTime(note, noteSec);
-						note.updateSustainToZoom(cachedSectionCrochets[noteSec] / 4, curZoom);
-					}
-	
-					for (event in events)
-					{
-						var secNum:Int = 0;
-						for (time in cachedSectionTimes)
-						{
-							if(time > event.strumTime) break;
-							secNum++;
-						}
-						positionNoteYOnTime(event, secNum);
-					}
-					loadSection();
-					showOutput('Zoom: ${Math.round(curZoom * 100)}%');
-					updateScrollY();
+					changeZoom((touchPad.buttonV.justPressed || FlxG.keys.justPressed.Z) ? -1 : 1);
 				}
 			}
 		}
@@ -1250,6 +1220,8 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 
 		var minX:Float = gridBg.x;
 		if(SHOW_EVENT_COLUMN && lockedEvents) minX += GRID_SIZE;
+
+		if (controls.mobileC) updateChartGestures();
 
 		if (controls.mobileC)
 		{
@@ -1799,6 +1771,113 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		outputTxt.visible = (outputAlpha > 0);
 		FlxG.camera.scroll.y = scrollY;
 		lastFocus = PsychUIInputText.focusOn;
+	}
+
+	// Cambia el nivel de zoom del grid (dir < 0 = alejar, dir > 0 = acercar). Lo usan los botones y los gestos.
+	function changeZoom(dir:Int)
+	{
+		if(dir < 0)
+			curZoom = zoomList[Std.int(Math.max(zoomList.indexOf(curZoom) - 1, 0))];
+		else
+			curZoom = zoomList[Std.int(Math.min(zoomList.indexOf(curZoom) + 1, zoomList.length - 1))];
+
+		notes.sort(PlayState.sortByTime);
+		var noteSec:Int = 0;
+		var nextSectionTime:Float = cachedSectionTimes[noteSec + 1];
+		var curSectionTime:Float = cachedSectionTimes[noteSec];
+		for (num => note in notes)
+		{
+			if(note == null) continue;
+			
+			while(cachedSectionTimes[noteSec + 1] <= note.strumTime)
+			{
+				noteSec++;
+				nextSectionTime = cachedSectionTimes[noteSec + 1];
+				curSectionTime = cachedSectionTimes[noteSec];
+			}
+			positionNoteYOnTime(note, noteSec);
+			note.updateSustainToZoom(cachedSectionCrochets[noteSec] / 4, curZoom);
+		}
+	
+		for (event in events)
+		{
+			var secNum:Int = 0;
+			for (time in cachedSectionTimes)
+			{
+				if(time > event.strumTime) break;
+				secNum++;
+			}
+			positionNoteYOnTime(event, secNum);
+		}
+		loadSection();
+		showOutput('Zoom: ${Math.round(curZoom * 100)}%');
+		updateScrollY();
+	}
+
+	// Gestos en la zona vacía a la izquierda del grid (así no colocan notas por accidente):
+	//   un dedo o dos dedos arrastrando hacia arriba/abajo = mover la canción
+	//   pellizcar con dos dedos = acercar / alejar el zoom del grid
+	var gesLastY:Float = -1;
+	var gesLastDist:Float = -1;
+	var gesZoomAccum:Float = 0;
+	function updateChartGestures():Void
+	{
+		var zoneX:Float = gridBg.x - 10;
+		var ts:Array<flixel.input.touch.FlxTouch> = [];
+		for (t in FlxG.touches.list)
+			if (t.pressed && t.x < zoneX && t.y < FlxG.height * 0.62)
+				ts.push(t);
+
+		if (ts.length == 0)
+		{
+			gesLastY = -1;
+			gesLastDist = -1;
+			gesZoomAccum = 0;
+			return;
+		}
+
+		var avgY:Float = 0;
+		for (t in ts) avgY += t.y;
+		avgY /= ts.length;
+
+		if (gesLastY >= 0 && FlxG.sound.music != null)
+		{
+			var dy:Float = avgY - gesLastY;
+			if (Math.abs(dy) > 0.5)
+			{
+				var timeDelta:Float = -dy / (GRID_SIZE * curZoom) * Conductor.stepCrochet;
+				if(FlxG.sound.music.playing) setSongPlaying(false);
+				FlxG.sound.music.time = FlxMath.bound(FlxG.sound.music.time + timeDelta, 0, FlxG.sound.music.length - 1);
+			}
+		}
+		gesLastY = avgY;
+
+		if (ts.length >= 2)
+		{
+			var dx:Float = ts[0].x - ts[1].x;
+			var dyy:Float = ts[0].y - ts[1].y;
+			var d:Float = Math.sqrt(dx * dx + dyy * dyy);
+			if (gesLastDist > 0)
+			{
+				gesZoomAccum += d - gesLastDist;
+				if (gesZoomAccum > 80)
+				{
+					changeZoom(1);
+					gesZoomAccum = 0;
+				}
+				else if (gesZoomAccum < -80)
+				{
+					changeZoom(-1);
+					gesZoomAccum = 0;
+				}
+			}
+			gesLastDist = d;
+		}
+		else
+		{
+			gesLastDist = -1;
+			gesZoomAccum = 0;
+		}
 	}
 
 	function moveSelectedNotes(noteData:Int = 0, lastY:Float) //This turns selected notes into moving notes
@@ -3465,6 +3544,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 			loadMusic();
 		});
 		var reloadAudioButton:PsychUIButton = new PsychUIButton(objX + 120, objY, 'Reload Audio', function() loadMusic(true), 80);
+		var cameraEditorButton:PsychUIButton = new PsychUIButton(objX + 120, objY + 24, 'Camera Editor', openCameraEditor, 165);
 
 		#if (mac || mobile)
 		var reloadJsonButton:PsychUIButton = new PsychUIButton(objX + 205, objY, 'Reload JSON', function()
@@ -3524,6 +3604,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		tab_group.add(songNameInputText);
 		tab_group.add(allowVocalsCheckBox);
 		tab_group.add(reloadAudioButton);
+		tab_group.add(cameraEditorButton);
 		#if (mac || mobile)
 		tab_group.add(reloadJsonButton);
 		#end
@@ -4727,6 +4808,12 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 					btn.cameras = state.cameras;
 					state.add(btn);
 
+					var btn:PsychUIButton = new PsychUIButton(0, btnY + 60, 'Futuristic', changeTheme.bind(FUTURISTIC));
+					btn.screenCenter(X);
+					btn.x -= 180;
+					btn.cameras = state.cameras;
+					state.add(btn);
+
 					var customBgC:String = '303030';
 					if(chartEditorSave.data.customBgColor != null)
 						customBgC = chartEditorSave.data.customBgColor;
@@ -5091,6 +5178,19 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		openSubState(new EditorPlayState(cast notes, [vocals, opponentVocals]));
 		upperBox.isMinimized = true;
 		upperBox.visible = mainBox.visible = infoBox.visible = false;
+	}
+
+	// Abre el editor de cámara con el stage de esta canción y vuelve aquí al salir
+	function openCameraEditor()
+	{
+		persistentUpdate = false;
+		FlxG.mouse.visible = false;
+		chartEditorSave.flush();
+		setSongPlaying(false);
+		updateChartData();
+		StageData.loadDirectory(PlayState.SONG);
+		ClientPrefs.toggleVolumeKeys(true);
+		MusicBeatState.switchState(new CameraEditorState(true));
 	}
 
 	function goToPlayState()
