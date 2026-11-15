@@ -10,6 +10,7 @@ import flixel.util.FlxSpriteUtil;
 import flixel.util.FlxStringUtil;
 
 import openfl.utils.AssetType;
+import objects.Neon;
 import mobile.backend.MobileScaleMode;
 
 import states.StoryMenuState;
@@ -33,6 +34,8 @@ class PauseSubState extends MusicBeatSubstate
 	var skipTimeTracker:FlxText;
 	var curTime:Float = Math.max(0, Conductor.songPosition);
 
+	var selBar:FlxSprite;
+	var barT:Float = 0;
 	var missingTextBG:FlxSprite;
 	var missingText:FlxText;
 
@@ -108,82 +111,37 @@ class PauseSubState extends MusicBeatSubstate
 		pauseCam.bgColor = FlxColor.TRANSPARENT;
 		FlxG.cameras.add(pauseCam, false);
 
-		// ---------- Fondo (assets/images/freeplay/bg.png) ----------
-		var bg:FlxSprite;
-		var bgAlpha:Float;
-		if (Paths.fileExists('images/freeplay/bg.png', AssetType.IMAGE))
-		{
-			bg = new FlxSprite().loadGraphic(Paths.image('freeplay/bg'));
-			bg.antialiasing = ClientPrefs.data.antialiasing;
-			var bgScale:Float = Math.max(W / bg.width, H / bg.height);
-			bg.setGraphicSize(Std.int(bg.width * bgScale));
-			bg.updateHitbox();
-			bg.setPosition((W - bg.width) / 2, (H - bg.height) / 2);
-			bgAlpha = 0.92;
-		}
-		else
-		{
-			bg = new FlxSprite().makeGraphic(Std.int(W), Std.int(H), FlxColor.BLACK);
-			bgAlpha = 0.6;
-		}
+		// ---------- Fondo futurista: degradado neón + scanlines ----------
+		var bg:FlxSprite = Neon.gradient(Std.int(W), Std.int(H));
+		var bgAlpha:Float = 0.95;
+		bg.setPosition(0, 0);
 		bg.alpha = 0;
 		bg.scrollFactor.set();
 		add(bg);
+		add(Neon.scanlines(Std.int(W), Std.int(H), 0));
 
-		// ---------- Panel izquierdo (detrás de las opciones) ----------
-		var leftPanel:FlxSprite;
-		if (Paths.fileExists('images/freeplay/panel_left.png', AssetType.IMAGE))
-		{
-			leftPanel = new FlxSprite().loadGraphic(Paths.image('freeplay/panel_left'));
-			leftPanel.antialiasing = ClientPrefs.data.antialiasing;
-			leftPanel.scale.set(imgScale, imgScale);
-			leftPanel.updateHitbox();
-			leftPanel.setPosition(0, 0);
-			edgeTop = 675 * imgScale;
-			edgeBottom = 410 * imgScale;
-		}
-		else
-		{
-			leftPanel = new FlxSprite().makeGraphic(420, Std.int(H), FlxColor.TRANSPARENT, true);
-			FlxSpriteUtil.drawPolygon(leftPanel, [
-				FlxPoint.get(0, 0), FlxPoint.get(400, 0),
-				FlxPoint.get(240, H), FlxPoint.get(0, H)
-			], 0xFF000000);
-			FlxSpriteUtil.drawLine(leftPanel, 400, 0, 240, H, {thickness: 8, color: 0xFF3A1BB5});
-			edgeTop = 400;
-			edgeBottom = 240;
-		}
+		// ---------- Panel izquierdo neón (detrás de las opciones) ----------
+		var leftPanel:FlxSprite = Neon.panel(430, Std.int(H) - 80, Neon.CYAN);
+		leftPanel.setPosition(30, 40);
+		edgeTop = 430;
+		edgeBottom = 430;
 		leftPanel.alpha = 0;
 		leftPanel.scrollFactor.set();
 		add(leftPanel);
 
+		var pauseTag:FlxText = Neon.styleText(new FlxText(60, 54, 0, 'PAUSA'), Neon.CYAN, 22);
+		pauseTag.scrollFactor.set();
+		add(pauseTag);
+
+		selBar = new FlxSprite(40, H / 2 - 24).makeGraphic(6, 48, Neon.MAGENTA);
+		selBar.scrollFactor.set();
+		add(selBar);
+
 		// ---------- Panel superior derecho (info de la canción) ----------
-		var rightPanel:FlxSprite;
-		var panelTextX:Float;
-		var panelTextW:Float;
-		if (Paths.fileExists('images/freeplay/panel_right.png', AssetType.IMAGE))
-		{
-			rightPanel = new FlxSprite().loadGraphic(Paths.image('freeplay/panel_right'));
-			rightPanel.antialiasing = ClientPrefs.data.antialiasing;
-			rightPanel.scale.set(imgScale, imgScale);
-			rightPanel.updateHitbox();
-			rightPanel.setPosition(W - rightPanel.width, 0);
-			panelTextX = W - (2164 - 1490) * imgScale;
-		}
-		else
-		{
-			var panelW:Float = 450;
-			var panelH:Float = 72;
-			rightPanel = new FlxSprite(W - panelW, 0).makeGraphic(Std.int(panelW), Std.int(panelH), FlxColor.TRANSPARENT, true);
-			FlxSpriteUtil.drawPolygon(rightPanel, [
-				FlxPoint.get(0, 0), FlxPoint.get(panelW, 0),
-				FlxPoint.get(panelW, panelH), FlxPoint.get(38, panelH)
-			], 0xFF000000);
-			FlxSpriteUtil.drawLine(rightPanel, 0, 0, 38, panelH, {thickness: 4, color: FlxColor.WHITE});
-			FlxSpriteUtil.drawLine(rightPanel, 38, panelH - 2, panelW, panelH - 2, {thickness: 4, color: FlxColor.WHITE});
-			panelTextX = W - panelW + 54;
-		}
-		panelTextW = W - panelTextX - 20;
+		var rightPanel:FlxSprite = Neon.panel(470, 110, Neon.MAGENTA);
+		rightPanel.setPosition(W - 490, 20);
+		var panelTextX:Float = W - 466;
+		var panelTextW:Float = 440;
 		rightPanel.alpha = 0;
 		rightPanel.scrollFactor.set();
 		add(rightPanel);
@@ -193,21 +151,21 @@ class PauseSubState extends MusicBeatSubstate
 		var diffName:String = Difficulty.list[diffIndex];
 		diffName = diffName.charAt(0).toUpperCase() + diffName.substr(1);
 
-		var levelInfo:FlxText = new FlxText(panelTextX, 6, 0, PlayState.SONG.song, 26);
-		levelInfo.setFormat(fontPath, 26, FlxColor.WHITE, LEFT);
+		var levelInfo:FlxText = new FlxText(panelTextX, 36, 0, PlayState.SONG.song, 26);
+		levelInfo.setFormat(fontPath, 26, Neon.TEXT, LEFT);
 		levelInfo.scrollFactor.set();
 		fitText(levelInfo, panelTextW);
 		add(levelInfo);
 
 		var infoLine:String = 'Difficulty: ' + diffName + '   ' + Language.getPhrase("blueballed", "Blueballed: {1}", [PlayState.deathCounter]);
-		var levelDifficulty:FlxText = new FlxText(panelTextX, 38, 0, infoLine, 20);
-		levelDifficulty.setFormat(fontPath, 20, FlxColor.WHITE, LEFT);
+		var levelDifficulty:FlxText = new FlxText(panelTextX, 76, 0, infoLine, 20);
+		levelDifficulty.setFormat(fontPath, 20, Neon.CYAN, LEFT);
 		levelDifficulty.scrollFactor.set();
 		fitText(levelDifficulty, panelTextW);
 		add(levelDifficulty);
 
 		// Modo práctica / charting
-		practiceText = new FlxText(20, 80, 0, Language.getPhrase("Practice Mode").toUpperCase(), 32);
+		practiceText = new FlxText(20, 145, 0, Language.getPhrase("Practice Mode").toUpperCase(), 32);
 		practiceText.scrollFactor.set();
 		practiceText.setFormat(fontPath, 32, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		practiceText.x = W - (practiceText.width + 20);
@@ -289,6 +247,8 @@ class PauseSubState extends MusicBeatSubstate
 			MusicBeatState.resetState();
 		}
 
+		barT += elapsed;
+		if (selBar != null) selBar.alpha = 0.65 + 0.35 * Math.sin(barT * 5);
 		updateItems(elapsed);
 		updateSkipTextStuff();
 		if (controls.UI_UP_P)
@@ -498,9 +458,11 @@ class PauseSubState extends MusicBeatSubstate
 		for (num => item in grpMenuShit.members)
 		{
 			item.alpha = 0.55;
+			item.color = Neon.TEXT;
 			if (num == curSelected)
 			{
 				item.alpha = 1;
+				item.color = Neon.CYAN;
 				if(item == skipTimeTracker)
 				{
 					curTime = Math.max(0, Conductor.songPosition);
@@ -524,7 +486,7 @@ class PauseSubState extends MusicBeatSubstate
 
 		for (num => str in menuItems) {
 			var item:FlxText = new FlxText(0, 0, 0, Language.getPhrase('pause_$str', str), 34);
-			item.setFormat(fontPath, 34, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			item.setFormat(fontPath, 34, Neon.TEXT, LEFT, FlxTextBorderStyle.OUTLINE, Neon.BLUE);
 			item.borderSize = 2;
 			item.scrollFactor.set();
 			itemW.push(item.width);
@@ -556,11 +518,11 @@ class PauseSubState extends MusicBeatSubstate
 		for (i => item in grpMenuShit.members)
 		{
 			var d:Float = i - lerpSelected;
-			item.visible = Math.abs(d) < 5.5;
+			item.visible = Math.abs(d) < 4;
 			if (!item.visible) continue;
 
 			var cy:Float = FlxG.height / 2 + d * 68;
-			var baseX:Float = Math.max(24, 70 - 3 * d * d); // nunca se sale por la izquierda
+			var baseX:Float = Math.max(60, 76 - 4 * d * d); // nunca se sale por la izquierda
 			var avail:Float = edgeAt(cy) - baseX - 30;
 			var sc:Float = Math.max(0.5, Math.min(1, avail / itemW[i]));
 			item.scale.set(sc, sc);
