@@ -1,6 +1,6 @@
 {
 	"items": [
-		{ "id": "story_mode",    "image": "mainmenu/menu_story_mode",    "action": "story_mode",    "column": "center", "visible": false },
+		{ "id": "story_mode",    "image": "mainmenu/menu_story_mode",    "action": "story_mode",    "column": "center", "visible": true },
 		{ "id": "freeplay",      "image": "mainmenu/menu_freeplay",      "action": "freeplay",      "column": "center", "visible": true },
 		{ "id": "mods",          "image": "mainmenu/menu_mods",          "action": "mods",          "column": "center", "visible": true },
 		{ "id": "credits",       "image": "mainmenu/menu_credits",       "action": "credits",       "column": "center", "visible": true },
