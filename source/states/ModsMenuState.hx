@@ -1,5 +1,8 @@
 package states;
 
+import objects.Neon;
+import mobile.backend.MobileScaleMode;
+
 import backend.WeekData;
 import backend.Mods;
 
@@ -72,13 +75,14 @@ class ModsMenuState extends MusicBeatState
 		#end
 
 		bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
-		bg.color = 0xFF665AFF;
+		bg.color = Neon.darken(0xFF665AFF);
 		bg.antialiasing = ClientPrefs.data.antialiasing;
 		add(bg);
 		bg.screenCenter();
+		add(Neon.scanlines(Neon.wideW(), FlxG.height, Neon.wideX()));
 
-		bgList = FlxSpriteUtil.drawRoundRect(new FlxSprite(40, 40).makeGraphic(340, 440, FlxColor.TRANSPARENT), 0, 0, 340, 440, 15, 15, FlxColor.BLACK);
-		bgList.alpha = 0.6;
+		bgList = Neon.panel(340, 440, Neon.MAGENTA);
+		bgList.setPosition(40, 40);
 
 		modsGroup = new FlxTypedGroup<ModItem>();
 
@@ -89,14 +93,14 @@ class ModsMenuState extends MusicBeatState
 			var modItem:ModItem = new ModItem(mod);
 			if(modsList.disabled.contains(mod))
 			{
-				modItem.icon.color = 0xFFFF6666;
-				modItem.text.color = FlxColor.GRAY;
+				modItem.icon.color = Neon.MAGENTA;
+				modItem.text.color = Neon.DIM;
 			}
 			modsGroup.add(modItem);
 		}
 
 		var mod:ModItem = modsGroup.members[curSelectedMod];
-		if(mod != null) bg.color = mod.bgColor;
+		if(mod != null) bg.color = Neon.darken(mod.bgColor);
 
 		//
 		var buttonX = bgList.x;
@@ -139,8 +143,8 @@ class ModsMenuState extends MusicBeatState
 			checkToggleButtons();
 			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
 		});
-		buttonEnableAll.bg.color = FlxColor.GREEN;
-		buttonEnableAll.focusChangeCallback = function(focus:Bool) if(!focus) buttonEnableAll.bg.color = FlxColor.GREEN;
+		buttonEnableAll.bg.color = 0xFF00FFB2;
+		buttonEnableAll.focusChangeCallback = function(focus:Bool) if(!focus) buttonEnableAll.bg.color = 0xFF00FFB2;
 		if(!controls.mobileC)
 			add(buttonEnableAll);
 
@@ -152,16 +156,16 @@ class ModsMenuState extends MusicBeatState
 				{
 					modsList.enabled.remove(mod.folder);
 					modsList.disabled.push(mod.folder);
-					mod.icon.color = 0xFFFF6666;
-					mod.text.color = FlxColor.GRAY;
+					mod.icon.color = Neon.MAGENTA;
+					mod.text.color = Neon.DIM;
 				}
 			}
 			updateModDisplayData();
 			checkToggleButtons();
 			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
 		});
-		buttonDisableAll.bg.color = 0xFFFF6666;
-		buttonDisableAll.focusChangeCallback = function(focus:Bool) if(!focus) buttonDisableAll.bg.color = 0xFFFF6666;
+		buttonDisableAll.bg.color = Neon.MAGENTA;
+		buttonDisableAll.focusChangeCallback = function(focus:Bool) if(!focus) buttonDisableAll.bg.color = Neon.MAGENTA;
 		if(!controls.mobileC)
 			add(buttonDisableAll);
 		checkToggleButtons();
@@ -174,7 +178,7 @@ class ModsMenuState extends MusicBeatState
 			var myX = bgList.x + bgList.width + 20;
 			noModsTxt = new FlxText(myX, 0, FlxG.width - myX - 20, Language.getPhrase('no_mods_installed', "NO MODS INSTALLED\nPRESS {1} TO EXIT OR INSTALL A MOD", [daButton]), 48);
 			if(FlxG.random.bool(0.1)) noModsTxt.text += '\nBITCH.'; //meanie
-			noModsTxt.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			noModsTxt.setFormat(Paths.font("vcr.ttf"), 32, Neon.TEXT, CENTER, FlxTextBorderStyle.OUTLINE, Neon.MAGENTA);
 			noModsTxt.borderSize = 2;
 			add(noModsTxt);
 			noModsTxt.screenCenter(Y);
@@ -190,8 +194,8 @@ class ModsMenuState extends MusicBeatState
 		}
 		//
 
-		bgTitle = FlxSpriteUtil.drawRoundRectComplex(new FlxSprite(bgList.x + bgList.width + 20, 40).makeGraphic(840, 180, FlxColor.TRANSPARENT), 0, 0, 840, 180, 15, 15, 0, 0, FlxColor.BLACK);
-		bgTitle.alpha = 0.6;
+		bgTitle = Neon.panel(840, 180, Neon.CYAN);
+		bgTitle.setPosition(bgList.x + bgList.width + 20, 40);
 		add(bgTitle);
 
 		icon = new FlxSprite(bgTitle.x + 15, bgTitle.y + 15);
@@ -202,21 +206,21 @@ class ModsMenuState extends MusicBeatState
 		modName.scaleY = 0.8;
 		add(modName);
 
-		bgDescription = FlxSpriteUtil.drawRoundRectComplex(new FlxSprite(bgTitle.x, bgTitle.y + 200).makeGraphic(840, 450, FlxColor.TRANSPARENT), 0, 0, 840, 450, 0, 0, 15, 15, FlxColor.BLACK);
-		bgDescription.alpha = 0.6;
+		bgDescription = Neon.panel(840, 450, Neon.CYAN);
+		bgDescription.setPosition(bgTitle.x, bgTitle.y + 200);
 		add(bgDescription);
 		
 		modDesc = new FlxText(bgDescription.x + 15, bgDescription.y + 15, bgDescription.width - 30, "", 24);
-		modDesc.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, LEFT);
+		modDesc.setFormat(Paths.font("vcr.ttf"), 24, Neon.TEXT, LEFT);
 		add(modDesc);
 
 		var myHeight = 100;
 		modRestartText = new FlxText(bgDescription.x + 15, bgDescription.y + bgDescription.height - myHeight - 25, bgDescription.width - 30, Language.getPhrase('mod_restart', '* Moving or Toggling On/Off this Mod will restart the game.'), 16);
-		modRestartText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, RIGHT);
+		modRestartText.setFormat(Paths.font("vcr.ttf"), 16, Neon.MAGENTA, RIGHT);
 		add(modRestartText);
 
 		bgButtons = FlxSpriteUtil.drawRoundRectComplex(new FlxSprite(bgDescription.x, bgDescription.y + bgDescription.height - myHeight).makeGraphic(840, myHeight, FlxColor.TRANSPARENT), 0, 0, 840, myHeight, 0, 0, 15, 15, FlxColor.WHITE);
-		bgButtons.color = FlxColor.BLACK;
+		bgButtons.color = Neon.BLUE;
 		bgButtons.alpha = 0.2;
 		add(bgButtons);
 
@@ -278,8 +282,8 @@ class ModsMenuState extends MusicBeatState
 				modsList.disabled.remove(mod);
 				modsList.enabled.push(mod);
 			}
-			curMod.icon.color = modsList.disabled.contains(mod) ? 0xFFFF6666 : FlxColor.WHITE;
-			curMod.text.color = modsList.disabled.contains(mod) ? FlxColor.GRAY : FlxColor.WHITE;
+			curMod.icon.color = modsList.disabled.contains(mod) ? Neon.MAGENTA : FlxColor.WHITE;
+			curMod.text.color = modsList.disabled.contains(mod) ? Neon.DIM : FlxColor.WHITE;
 
 			if(curMod.mustRestart) waitingToRestart = true;
 			updateModDisplayData();
@@ -292,7 +296,7 @@ class ModsMenuState extends MusicBeatState
 		buttons.push(button);
 		button.focusChangeCallback = function(focus:Bool) {
 			if(!focus)
-				button.bg.color = modsList.enabled.contains(modsGroup.members[curSelectedMod].folder) ? FlxColor.GREEN : 0xFFFF6666;
+				button.bg.color = modsList.enabled.contains(modsGroup.members[curSelectedMod].folder) ? 0xFF00FFB2 : Neon.MAGENTA;
 		};
 
 		if(modsList.all.length < 1)
@@ -307,12 +311,13 @@ class ModsMenuState extends MusicBeatState
 
 		changeSelectedMod();
 
-		var bottomBG = new FlxSprite(0, FlxG.height - 26).makeGraphic(FlxG.width, 26, 0xFF000000);
-		bottomBG.alpha = 0.6;
+		var bottomBG = new FlxSprite(Neon.wideX(), FlxG.height - 26).makeGraphic(Neon.wideW(), 26, 0xFF07061A);
+		bottomBG.alpha = 0.85;
 		add(bottomBG);
+		add(new FlxSprite(Neon.wideX(), FlxG.height - 28).makeGraphic(Neon.wideW(), 2, Neon.CYAN));
 
 		var bottomText = new FlxText(bottomBG.x, bottomBG.y + 4, FlxG.width, Language.getPhrase('mods_leave', "Press {1} To Leave", [daButton]), 16);
-		bottomText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, CENTER);
+		bottomText.setFormat(Paths.font("vcr.ttf"), 16, Neon.CYAN, CENTER);
 		bottomText.scrollFactor.set();
 		add(bottomText);
 
@@ -604,12 +609,12 @@ class ModsMenuState extends MusicBeatState
 		if(curMod != null) curMod.selectBg.visible = false;
 		if(curSelectedButton < 0)
 		{
-			bgButtons.color = FlxColor.BLACK;
+			bgButtons.color = Neon.BLUE;
 			bgButtons.alpha = 0.2;
 		}
 		else
 		{
-			bgButtons.color = FlxColor.WHITE;
+			bgButtons.color = Neon.CYAN;
 			bgButtons.alpha = 0.8;
 		}
 
@@ -684,7 +689,7 @@ class ModsMenuState extends MusicBeatState
 		{
 			var curMod:ModItem = modsGroup.members[curSelectedMod];
 			if(curMod != null) curMod.selectBg.visible = true;
-			bgButtons.color = FlxColor.BLACK;
+			bgButtons.color = Neon.BLUE;
 			bgButtons.alpha = 0.2;
 		}
 	}
@@ -695,7 +700,7 @@ class ModsMenuState extends MusicBeatState
 		if(curMod == null) return;
 
 		FlxTween.cancelTweensOf(bg);
-		FlxTween.color(bg, 1, bg.color, curMod.bgColor);
+		FlxTween.color(bg, 1, bg.color, Neon.darken(curMod.bgColor));
 
 		if(Math.abs(centerMod - curSelectedMod) > 2)
 		{
@@ -861,8 +866,8 @@ class ModItem extends FlxSpriteGroup
 			}
 		}
 
-		selectBg = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
-		selectBg.alpha = 0.8;
+		selectBg = new FlxSprite().makeGraphic(1, 1, Neon.MAGENTA);
+		selectBg.alpha = 0.45;
 		selectBg.visible = false;
 		add(selectBg);
 
@@ -871,7 +876,7 @@ class ModItem extends FlxSpriteGroup
 		add(icon);
 
 		text = new FlxText(95, 38, 230, "", 16);
-		text.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		text.setFormat(Paths.font("vcr.ttf"), 16, Neon.TEXT, LEFT, FlxTextBorderStyle.OUTLINE, Neon.BLUE);
 		text.borderSize = 2;
 		text.y -= Std.int(text.height / 2);
 		add(text);
@@ -937,7 +942,7 @@ class MenuButton extends FlxSpriteGroup
 		super(x, y);
 		
 		bg = FlxSpriteUtil.drawRoundRect(new FlxSprite().makeGraphic(width, height, FlxColor.TRANSPARENT), 0, 0, width, height, 15, 15, FlxColor.WHITE);
-		bg.color = FlxColor.BLACK;
+		bg.color = 0xFF0B0A24;
 		add(bg);
 
 		if(text != null)
@@ -1035,7 +1040,7 @@ class MenuButton extends FlxSpriteGroup
 	public function setButtonVisibility(focusVal:Bool)
 	{
 		alpha = 1;
-		bg.color = focusVal ? FlxColor.WHITE : FlxColor.BLACK;
+		bg.color = focusVal ? Neon.CYAN : 0xFF0B0A24;
 		bg.alpha = focusVal ? 0.8 : 0.6;
 
 		var focusAlpha = focusVal ? 1 : 0.6;
@@ -1048,7 +1053,7 @@ class MenuButton extends FlxSpriteGroup
 		else if(icon != null)
 		{
 			icon.alpha = focusAlpha;
-			icon.color = focusVal ? FlxColor.BLACK : FlxColor.WHITE;
+			icon.color = focusVal ? Neon.BG : Neon.TEXT;
 		}
 
 		if(!enabled) alpha = 0.4;

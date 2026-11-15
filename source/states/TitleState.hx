@@ -17,6 +17,11 @@ import openfl.display.BitmapData;
 
 import shaders.ColorSwap;
 
+import objects.Neon;
+import flixel.util.FlxGradient;
+import openfl.geom.Rectangle;
+import openfl.display.BlendMode;
+
 import states.StoryMenuState;
 import states.MainMenuState;
 
@@ -51,7 +56,7 @@ class TitleState extends MusicBeatState
 	var credTextShit:Alphabet;
 	var ngSpr:FlxSprite;
 	
-	var titleTextColors:Array<FlxColor> = [0xFF33FFFF, 0xFF3333CC];
+	var titleTextColors:Array<FlxColor> = [Neon.CYAN, Neon.MAGENTA];
 	var titleTextAlphas:Array<Float> = [1, .64];
 
 	var curWacky:Array<String> = [];
@@ -116,6 +121,7 @@ class TitleState extends MusicBeatState
 	}
 
 	var logoBl:FlxSprite;
+	var logoGlow:FlxSprite;
 	var gfDance:FlxSprite;
 	var danceLeft:Bool = false;
 	var titleText:FlxSprite;
@@ -126,6 +132,24 @@ class TitleState extends MusicBeatState
 		persistentUpdate = true;
 		if (!initialized && FlxG.sound.music == null)
 			FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+
+		// --- Fondo neon cyberpunk (se adapta al widescreen) ---
+		var neonW:Int = Std.int(FlxG.width + MobileScaleMode.gameCutoutSize.x * 2);
+		var neonBg:FlxSprite = FlxGradient.createGradientFlxSprite(neonW, FlxG.height, [Neon.BG, 0xFF14104A, 0xFF2A0F55], 1, 90);
+		neonBg.x = -MobileScaleMode.gameCutoutSize.x;
+		add(neonBg);
+
+		var scan:FlxSprite = new FlxSprite(neonBg.x, 0).makeGraphic(neonW, FlxG.height, FlxColor.TRANSPARENT, true);
+		var scanRect:Rectangle = new Rectangle(0, 0, neonW, 1);
+		var scanY:Int = 0;
+		while (scanY < FlxG.height)
+		{
+			scanRect.y = scanY;
+			scan.pixels.fillRect(scanRect, 0x33000000);
+			scanY += 4;
+		}
+		scan.dirty = true;
+		add(scan);
 
 		loadJsonData();
 		#if TITLE_SCREEN_EASTER_EGG easterEggData(); #end
@@ -138,6 +162,16 @@ class TitleState extends MusicBeatState
 		logoBl.animation.addByPrefix('bump', 'logo bumpin', 24, false);
 		logoBl.animation.play('bump');
 		logoBl.updateHitbox();
+
+		logoGlow = new FlxSprite(logoPosition.x, logoPosition.y);
+		logoGlow.frames = logoBl.frames;
+		logoGlow.antialiasing = ClientPrefs.data.antialiasing;
+		logoGlow.animation.addByPrefix('bump', 'logo bumpin', 24, false);
+		logoGlow.animation.play('bump');
+		logoGlow.color = Neon.MAGENTA;
+		logoGlow.blend = BlendMode.ADD;
+		logoGlow.alpha = 0.55;
+		logoGlow.scale.set(1.04, 1.04);
 
 		gfDance = new FlxSprite(gfPosition.x, gfPosition.y);
 		gfDance.antialiasing = ClientPrefs.data.antialiasing;
@@ -203,6 +237,7 @@ class TitleState extends MusicBeatState
 		ngSpr.antialiasing = ClientPrefs.data.antialiasing;
 
 		add(gfDance);
+		add(logoGlow);
 		add(logoBl); //FNF Logo
 		add(titleText); //"Press Enter to Begin" text
 		add(credGroup);
@@ -383,7 +418,7 @@ class TitleState extends MusicBeatState
 				
 				if(titleText != null) titleText.animation.play('press');
 
-				FlxG.camera.flash(ClientPrefs.data.flashing ? FlxColor.WHITE : 0x4CFFFFFF, 1);
+				FlxG.camera.flash(ClientPrefs.data.flashing ? Neon.MAGENTA : 0x4CFF2BD6, 1);
 				FlxG.sound.play(Paths.sound('confirmMenu'), 0.7);
 
 				transitioning = true;
@@ -508,6 +543,15 @@ class TitleState extends MusicBeatState
 
 		if(logoBl != null)
 			logoBl.animation.play('bump', true);
+		if(logoGlow != null)
+			logoGlow.animation.play('bump', true);
+
+		if (skippedIntro && !transitioning)
+		{
+			FlxG.camera.zoom = 1.02;
+			FlxTween.cancelTweensOf(FlxG.camera);
+			FlxTween.tween(FlxG.camera, {zoom: 1}, 0.35, {ease: FlxEase.quadOut});
+		}
 
 		if(gfDance != null)
 		{
@@ -632,7 +676,19 @@ class TitleState extends MusicBeatState
 			{
 				remove(ngSpr);
 				remove(credGroup);
-				FlxG.camera.flash(FlxColor.WHITE, 4);
+				FlxG.camera.flash(ClientPrefs.data.flashing ? Neon.CYAN : 0x4C00F0FF, 1.5);
+
+				var sweep:FlxSprite = new FlxSprite().makeGraphic(1, 1, Neon.CYAN);
+				sweep.scale.set(180, FlxG.height);
+				sweep.updateHitbox();
+				sweep.x = -MobileScaleMode.gameCutoutSize.x - 180;
+				sweep.blend = BlendMode.ADD;
+				sweep.alpha = 0.45;
+				add(sweep);
+				FlxTween.tween(sweep, {x: FlxG.width + MobileScaleMode.gameCutoutSize.x}, 0.8, {ease: FlxEase.quartIn, onComplete: function(twn:FlxTween) {
+					remove(sweep, true);
+					sweep.destroy();
+				}});
 
 				var easteregg:String = FlxG.save.data.psychDevsEasterEgg;
 				if (easteregg == null) easteregg = '';
