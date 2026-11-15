@@ -18,6 +18,7 @@ import openfl.display.BitmapData;
 import shaders.ColorSwap;
 
 import objects.Neon;
+import flixel.util.FlxSpriteUtil;
 import flixel.util.FlxGradient;
 import openfl.geom.Rectangle;
 import openfl.display.BlendMode;
@@ -121,6 +122,12 @@ class TitleState extends MusicBeatState
 	}
 
 	var logoBl:FlxSprite;
+	var neonScanBar:FlxSprite;
+	var neonFrame:FlxSprite;
+	var neonParts:Array<FlxSprite> = [];
+	var neonSpeeds:Array<Float> = [];
+	var neonPulse:Float = 0;
+	var neonT:Float = 0;
 	var logoGlow:FlxSprite;
 	var gfDance:FlxSprite;
 	var danceLeft:Bool = false;
@@ -150,6 +157,21 @@ class TitleState extends MusicBeatState
 		}
 		scan.dirty = true;
 		add(scan);
+
+		// Barra de escaneo y partículas de neón que suben
+		neonScanBar = new FlxSprite(neonBg.x, 0).makeGraphic(neonW, 4, Neon.CYAN);
+		neonScanBar.alpha = 0.2;
+		add(neonScanBar);
+		for (i in 0...28)
+		{
+			var sz:Int = FlxG.random.int(3, 7);
+			var p:FlxSprite = new FlxSprite(neonBg.x + FlxG.random.float(0, neonW), FlxG.random.float(0, FlxG.height)).makeGraphic(sz, sz, (i % 2 == 0) ? Neon.CYAN : Neon.MAGENTA);
+			p.alpha = FlxG.random.float(0.25, 0.7);
+			p.blend = BlendMode.ADD;
+			neonParts.push(p);
+			neonSpeeds.push(FlxG.random.float(18, 80));
+			add(p);
+		}
 
 		loadJsonData();
 		#if TITLE_SCREEN_EASTER_EGG easterEggData(); #end
@@ -240,6 +262,11 @@ class TitleState extends MusicBeatState
 		add(logoGlow);
 		add(logoBl); //FNF Logo
 		add(titleText); //"Press Enter to Begin" text
+
+		// Marco neón que late con la música
+		neonFrame = new FlxSprite(neonBg.x + 14, 14).makeGraphic(neonW - 28, FlxG.height - 28, FlxColor.TRANSPARENT, true);
+		FlxSpriteUtil.drawRoundRect(neonFrame, 1, 1, neonW - 30, FlxG.height - 30, 24, 24, FlxColor.TRANSPARENT, {thickness: 3, color: Neon.CYAN});
+		add(neonFrame);
 		add(credGroup);
 		add(ngSpr);
 
@@ -363,6 +390,27 @@ class TitleState extends MusicBeatState
 		return swagGoodArray;
 	}
 
+	function updateNeonFx(elapsed:Float):Void
+	{
+		if (neonScanBar == null) return;
+		neonT += elapsed;
+		neonPulse = Math.max(0, neonPulse - elapsed * 3);
+		neonScanBar.y += 110 * elapsed;
+		if (neonScanBar.y > FlxG.height) neonScanBar.y = -4;
+		if (neonFrame != null) neonFrame.alpha = 0.45 + 0.4 * neonPulse + 0.1 * Math.sin(neonT * 3);
+		var top:Float = -10;
+		for (i in 0...neonParts.length)
+		{
+			var p:FlxSprite = neonParts[i];
+			p.y -= neonSpeeds[i] * elapsed;
+			if (p.y < top)
+			{
+				p.y = FlxG.height + 10;
+				p.x = neonScanBar.x + FlxG.random.float(0, neonScanBar.width);
+			}
+		}
+	}
+
 	var transitioning:Bool = false;
 	private static var playJingle:Bool = false;
 	
@@ -371,6 +419,7 @@ class TitleState extends MusicBeatState
 
 	override function update(elapsed:Float)
 	{
+		updateNeonFx(elapsed);
 		if (FlxG.sound.music != null)
 			Conductor.songPosition = FlxG.sound.music.time;
 		// FlxG.watch.addQuick('amp', FlxG.sound.music.amplitude);
@@ -540,6 +589,7 @@ class TitleState extends MusicBeatState
 	override function beatHit()
 	{
 		super.beatHit();
+		neonPulse = 1;
 
 		if(logoBl != null)
 			logoBl.animation.play('bump', true);

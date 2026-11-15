@@ -22,6 +22,8 @@ import sys.thread.Mutex;
 
 import objects.Note;
 import objects.NoteSplash;
+import objects.Neon;
+import flixel.addons.display.FlxBackdrop;
 
 #if HSCRIPT_ALLOWED
 import psychlua.HScript;
@@ -62,21 +64,41 @@ class LoadingState extends MusicBeatState
 	var curPercent:Float = 0;
 	var stateChangeDelay:Float = 0;
 
-	#if PSYCH_WATERMARKS
 	var logo:FlxSprite;
-	var pessy:FlxSprite;
+	var logoBaseY:Float = 0;
+	var logoScale:Float = 1;
+	var checker:FlxSprite;
+	var checkSpeed:Float = 0;
 	var loadingText:FlxText;
+	var percentText:FlxText;
+	var tipText:FlxText;
+	var tipTimer:Float = 0;
+	var tipIndex:Int = 0;
+	var timePassed:Float = 0;
 
-	var timePassed:Float;
-	var shakeFl:Float;
-	var shakeMult:Float = 0;
-	
-	var isSpinning:Bool = false;
-	var spawnedPessy:Bool = false;
-	var pressedTimes:Int = 0;
-	#else
-	var funkay:FlxSprite;
-	#end
+	static final TIPS:Array<String> = [
+		'TIP: En el Freeplay, toca C para abrir los Gameplay Changers.',
+		'TIP: El editor de cámara está dentro del chart editor, en el botón CAMARA.',
+		'TIP: Las canciones bloqueadas del Freeplay se desbloquean pasando el Modo Historia.',
+		'TIP: En el Freeplay, la tecla Y reinicia tu puntuación. Con cuidado.',
+		'Nixer Engine: 60% código, 40% café y 100% neón.',
+		'Cargando... el juego está haciendo calentamiento antes de rapear.',
+		'Si no sacas Sick, fue el lag. Siempre es el lag.',
+		'Dato curioso: Boyfriend no dice ni una palabra y aun así gana todas las batallas.',
+		'Esto no es un bug, es una característica sin documentar.',
+		'Pantalla ancha compatible. El engine también quiere verse bien.',
+		'Se dice que si miras la barra de carga, avanza más lento.',
+		'Pulsa B para volver atrás. La vida no tiene botón B, pero el engine sí.',
+		'El logo está brillando. No hace nada, pero se ve genial.',
+		'Dato del Lost Media: Nyxen antes era un humano. Sí, humano. Cómo cambian las cosas.',
+		'Dato del Lost Media: Nyxen antes hacía contenido de Gacha Life. Ese contenido está perdido... por algo.',
+		'Dato del Lost Media: Nyxen antes no sabía dibujar y aprendió gracias a su madre. Gracias, mamá.',
+		'Nyxen: de humano a personaje, de Gacha Life a esto. Evolución nivel Pokémon.',
+		'Si ves a Nyxen dibujando, recuerda que hubo un tiempo en que no sabía. Hay esperanza para todos.',
+		'Nyxen sin saber dibujar y mamá enseñándole: el verdadero tutorial del engine.',
+		'Lost Media confirmado: el contenido de Gacha Life de Nyxen. Se busca, no se encuentra.',
+		'Nyxen era humano antes de ser Nyxen. El engine no juzga.'
+	];
 
 	#if HSCRIPT_ALLOWED
 	var hscript:HScript;
@@ -87,14 +109,14 @@ class LoadingState extends MusicBeatState
 		barGroup = new FlxSpriteGroup();
 		add(barGroup);
 
-		var barBack:FlxSprite = new FlxSprite(0, 660).makeGraphic(1, 1, FlxColor.BLACK);
+		var barBack:FlxSprite = new FlxSprite(0, 660).makeGraphic(1, 1, 0xFF0B0A24);
 		var cutX:Float = mobile.backend.MobileScaleMode.gameCutoutSize.x;
 		barBack.scale.set(FlxG.width + cutX * 2 - 300, 25);
 		barBack.updateHitbox();
 		barBack.screenCenter(X);
 		barGroup.add(barBack);
 
-		bar = new FlxSprite(barBack.x + 5, barBack.y + 5).makeGraphic(1, 1, FlxColor.WHITE);
+		bar = new FlxSprite(barBack.x + 5, barBack.y + 5).makeGraphic(1, 1, Neon.CYAN);
 		bar.scale.set(0, 15);
 		bar.updateHitbox();
 		barGroup.add(bar);
@@ -137,42 +159,69 @@ class LoadingState extends MusicBeatState
 		}
 		#end
 
-		#if PSYCH_WATERMARKS // PSYCH LOADING SCREEN
-		var bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
-		bg.antialiasing = ClientPrefs.data.antialiasing;
-		bg.setGraphicSize(Std.int(FlxG.width + cutX * 2));
-		bg.color = 0xFFD16FFF;
-		bg.updateHitbox();
+		// ---------- Pantalla de carga futurista: logo + check animado + consejos ----------
+		var wideW:Int = Std.int(FlxG.width + cutX * 2);
+		var bg:FlxSprite = Neon.gradient(wideW, FlxG.height);
 		bg.x = -cutX;
 		addBehindBar(bg);
-	
-		loadingText = new FlxText(520, 600, 400, Language.getPhrase('now_loading', 'Now Loading', ['...']), 32);
-		loadingText.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, LEFT, OUTLINE_FAST, FlxColor.BLACK);
-		loadingText.borderSize = 2;
-		addBehindBar(loadingText);
-	
-		logo = new FlxSprite(0, 0).loadGraphic(Paths.image('loading_screen/icon'));
-		logo.antialiasing = ClientPrefs.data.antialiasing;
-		logo.scale.set(0.75, 0.75);
-		logo.updateHitbox();
-		logo.screenCenter();
-		logo.x -= 50;
-		logo.y -= 40;
+
+		// Cuadros que se mueven de fondo (images/freeplay/check.png, check.png o freeplay/checker.png)
+		var checkKey:String = null;
+		for (k in ['freeplay/check', 'check', 'freeplay/checker'])
+		{
+			if (Paths.fileExists('images/' + k + '.png', IMAGE)) { checkKey = k; break; }
+		}
+		if (checkKey != null)
+		{
+			var bd:FlxBackdrop = new FlxBackdrop(Paths.image(checkKey), XY);
+			bd.antialiasing = ClientPrefs.data.antialiasing;
+			var cs:Float = FlxG.height / 720 * 1.4;
+			bd.scale.set(cs, cs);
+			bd.updateHitbox();
+			bd.alpha = 0.4;
+			checker = bd;
+			checkSpeed = 34 * FlxG.height / 720;
+			addBehindBar(checker);
+		}
+		addBehindBar(Neon.scanlines(wideW, FlxG.height, -cutX));
+
+		// Logo del engine (images/NixerEngineLogoTweak.png)
+		if (Paths.fileExists('images/NixerEngineLogoTweak.png', IMAGE))
+		{
+			logo = new FlxSprite(0, 0).loadGraphic(Paths.image('NixerEngineLogoTweak'));
+			logo.antialiasing = ClientPrefs.data.antialiasing;
+			logo.setGraphicSize(0, Std.int(FlxG.height * 0.5));
+			logo.updateHitbox();
+			logoScale = logo.scale.x;
+		}
+		else
+		{
+			// Sin imagen: el nombre en texto neón
+			logo = new FlxSprite(0, 0).makeGraphic(1, 1, FlxColor.TRANSPARENT);
+			var nameTxt:FlxText = Neon.styleText(new FlxText(0, 150, FlxG.width, 'NIXER ENGINE'), Neon.CYAN, 72);
+			nameTxt.alignment = CENTER;
+			nameTxt.x = -cutX;
+			nameTxt.fieldWidth = wideW;
+			addBehindBar(nameTxt);
+		}
+		logo.screenCenter(X);
+		logo.y = 60;
+		logoBaseY = logo.y;
 		addBehindBar(logo);
 
-		#else // BASE GAME LOADING SCREEN
-		var bg = new FlxSprite().makeGraphic(1, 1, 0xFFCAFF4D);
-		bg.scale.set(FlxG.width + cutX * 2, FlxG.height);
-		bg.updateHitbox();
-		bg.screenCenter();
-		addBehindBar(bg);
+		tipIndex = FlxG.random.int(0, TIPS.length - 1);
+		tipText = Neon.styleText(new FlxText(barBack.x, 560, barBack.width, TIPS[tipIndex]), Neon.TEXT, 24);
+		tipText.alignment = CENTER;
+		addBehindBar(tipText);
 
-		funkay = new FlxSprite(0, 0).loadGraphic(Paths.image('funkay'));
-		funkay.antialiasing = ClientPrefs.data.antialiasing;
-		funkay.setGraphicSize(0, FlxG.height);
-		funkay.updateHitbox();
-		addBehindBar(funkay);
-		#end
+		loadingText = Neon.styleText(new FlxText(0, 610, 0, Language.getPhrase('now_loading', 'Now Loading{1}', ['...'])), Neon.CYAN, 28);
+		loadingText.x = barBack.x;
+		addBehindBar(loadingText);
+
+		percentText = Neon.styleText(new FlxText(0, 610, 0, '0%'), Neon.MAGENTA, 28);
+		percentText.x = barBack.x + barBack.width - percentText.width;
+		addBehindBar(percentText);
+
 		super.create();
 
 		if (stateChangeDelay <= 0 && checkLoaded())
@@ -225,76 +274,44 @@ class LoadingState extends MusicBeatState
 		}
 		#end
 
-		#if PSYCH_WATERMARKS // PSYCH LOADING SCREEN
 		timePassed += elapsed;
-		shakeFl += elapsed * 3000;
 		var dots:String = '';
 		switch(Math.floor(timePassed % 1 * 3))
 		{
-			case 0:
-				dots = '.';
-			case 1:
-				dots = '..';
-			case 2:
-				dots = '...';
+			case 0: dots = '.';
+			case 1: dots = '..';
+			case 2: dots = '...';
 		}
 		loadingText.text = Language.getPhrase('now_loading', 'Now Loading{1}', [dots]);
+		percentText.text = Std.int(curPercent * 100) + '%';
+		percentText.x = bar.x - 5 + (barWidth + 10) - percentText.width;
 
-		if(!spawnedPessy)
+		if (checker != null)
 		{
-			if(!transitioning && (controls.ACCEPT || FlxG.touches.getFirst() != null && FlxG.touches.getFirst().justPressed))
-			{
-				shakeMult = 1;
-				FlxG.sound.play(Paths.sound('cancelMenu'));
-				pressedTimes++;
-			}
-			shakeMult = Math.max(0, shakeMult - elapsed * 5);
-			logo.offset.x = Math.sin(shakeFl * Math.PI / 180) * shakeMult * 100;
-
-			if(pressedTimes >= 5)
-			{
-				FlxG.camera.fade(0xAAFFFFFF, 0.5, true);
-				logo.visible = false;
-				spawnedPessy = true;
-				stateChangeDelay = 5;
-				FlxG.sound.play(Paths.sound('secret'));
-
-				pessy = new FlxSprite(700, 140);
-				pessy.frames = Paths.getSparrowAtlas('loading_screen/pessy');
-				pessy.animation.addByPrefix('run', 'run', 24, true);
-				pessy.animation.addByPrefix('spin', 'spin', 24, true);
-				pessy.antialiasing = ClientPrefs.data.antialiasing;
-				pessy.flipX = (logo.offset.x > 0);
-				pessy.visible = false;
-
-				new FlxTimer().start(0.01, function(tmr:FlxTimer) {
-					pessy.x = FlxG.width + 200;
-					pessy.velocity.x = -1100;
-					if(pessy.flipX)
-					{
-						pessy.x = -pessy.width - 200;
-						pessy.velocity.x *= -1;
-					}
-		
-					pessy.visible = true;
-					pessy.animation.play('run', true);
-					#if ACHIEVEMENTS_ALLOWED Achievements.unlock('pessy_easter_egg'); #end
-					
-					insert(members.indexOf(loadingText), pessy);
-				});
-			}
+			checker.x += checkSpeed * elapsed;
+			checker.y += checkSpeed * elapsed;
 		}
-		else if(!isSpinning && (pessy.flipX && pessy.x > FlxG.width) || (!pessy.flipX && pessy.x < -pessy.width))
+
+		// Logo flotando y respirando
+		logo.y = logoBaseY + Math.sin(timePassed * 2) * 8;
+		var pulse:Float = logoScale * (1 + 0.025 * Math.sin(timePassed * 3));
+		if (logo.graphic != null && logo.frameWidth > 1)
 		{
-			isSpinning = true;
-			pessy.animation.play('spin', true);
-			pessy.flipX = false;
-			pessy.x = 500;
-			pessy.y = FlxG.height + 500;
-			pessy.velocity.x = 0;
-			FlxTween.tween(pessy, {y: 10}, 0.65, {ease: FlxEase.quadOut});
+			logo.scale.set(pulse, pulse);
 		}
-		#end
+
+		// Consejos que cambian cada 4 segundos
+		tipTimer += elapsed;
+		if (tipTimer >= 4)
+		{
+			tipTimer = 0;
+			var next:Int = FlxG.random.int(0, TIPS.length - 1);
+			if (next == tipIndex) next = (next + 1) % TIPS.length;
+			tipIndex = next;
+			tipText.alpha = 0;
+			tipText.text = TIPS[tipIndex];
+			FlxTween.tween(tipText, {alpha: 1}, 0.4);
+		}
 	}
 
 	#if HSCRIPT_ALLOWED
