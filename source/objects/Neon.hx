@@ -15,13 +15,13 @@ import openfl.geom.Rectangle;
  */
 class Neon
 {
-	public static final MAGENTA:FlxColor = 0xFFFF2BD6;
-	public static final CYAN:FlxColor    = 0xFF00F0FF;
-	public static final BLUE:FlxColor    = 0xFF1E3BFF;
-	public static final BG:FlxColor      = 0xFF07061A;
-	public static final PANEL:FlxColor   = 0xCC0B0A24; // negro azulado semitransparente
-	public static final TEXT:FlxColor    = 0xFFEAF8FF;
-	public static final DIM:FlxColor     = 0xFF5A5C86;
+	public static inline var MAGENTA:FlxColor = 0xFFFF2BD6;
+	public static inline var CYAN:FlxColor    = 0xFF00F0FF;
+	public static inline var BLUE:FlxColor    = 0xFF1E3BFF;
+	public static inline var BG:FlxColor      = 0xFF07061A;
+	public static inline var PANEL:FlxColor   = 0xCC0B0A24; // negro azulado semitransparente
+	public static inline var TEXT:FlxColor    = 0xFFEAF8FF;
+	public static inline var DIM:FlxColor     = 0xFF5A5C86;
 
 	/** Ancho real de la pantalla en píxeles virtuales (1280 + bordes del widescreen). */
 	public static inline function wideW():Int
@@ -31,8 +31,8 @@ class Neon
 	public static inline function wideX():Float
 		return -MobileScaleMode.gameCutoutSize.x;
 
-	/** Panel redondeado con borde de neón. */
-	public static function panel(w:Int, h:Int, border:FlxColor = CYAN):FlxSprite
+	/** Panel redondeado con borde de neón. (0xFF00F0FF = cian) */
+	public static function panel(w:Int, h:Int, border:Int = 0xFF00F0FF):FlxSprite
 	{
 		var spr = new FlxSprite();
 		spr.makeGraphic(w, h, FlxColor.TRANSPARENT, true);
