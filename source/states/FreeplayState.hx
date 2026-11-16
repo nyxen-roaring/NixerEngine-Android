@@ -20,6 +20,7 @@ import flixel.util.FlxSpriteUtil;
 import flixel.addons.display.FlxBackdrop;
 
 import openfl.utils.AssetType;
+import mobile.backend.MobileData;
 import mobile.backend.MobileScaleMode;
 
 import openfl.utils.Assets;
@@ -382,8 +383,22 @@ class FreeplayState extends MusicBeatState
 		var bgWarning:FlxText = MenuBG.warning();
 		if (bgWarning != null) add(bgWarning);
 
-		addTouchPad('LEFT_FULL', 'A_B_C_X_Y');
+		addSafePad();
 		super.create();
+	}
+
+	// Usa solo modos de touchpad que existen (evita el error "actionMode doesn't exist")
+	function addSafePad():Void
+	{
+		var dpad:String = 'NONE';
+		for (m in ['LEFT_FULL', 'FULL', 'UP_DOWN'])
+			if (MobileData.dpadModes.exists(m)) { dpad = m; break; }
+
+		var action:String = 'A_B';
+		for (m in ['A_B_C_X_Y', 'A_B_X_Y'])
+			if (MobileData.actionModes.exists(m)) { action = m; break; }
+
+		addTouchPad(dpad, action);
 	}
 
 	function showEmptyError(accept:String, reject:String, title:String):Void
@@ -401,7 +416,7 @@ class FreeplayState extends MusicBeatState
 		persistentUpdate = true;
 		super.closeSubState();
 		removeTouchPad();
-		addTouchPad('LEFT_FULL', 'A_B_C_X_Y');
+		addSafePad();
 	}
 
 	public function addSong(songName:String, weekNum:Int, songCharacter:String, color:Int, composer:String = '')

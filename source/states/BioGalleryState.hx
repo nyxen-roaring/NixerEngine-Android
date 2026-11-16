@@ -2,6 +2,9 @@ package states;
 
 import flixel.FlxG;
 import flixel.FlxSprite;
+import flixel.addons.display.FlxBackdrop;
+import flixel.graphics.FlxGraphic;
+import flixel.math.FlxPoint;
 import flixel.math.FlxMath;
 import flixel.text.FlxText;
 import flixel.tweens.FlxEase;
@@ -9,9 +12,12 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
 import flixel.util.FlxSpriteUtil;
 import haxe.Json;
+import mobile.backend.MobileData;
 import mobile.backend.MobileScaleMode;
 import objects.HealthIcon;
 import objects.Neon;
+import openfl.display.BitmapData;
+import openfl.geom.Rectangle;
 import openfl.utils.AssetType;
 
 typedef BioEntry =
@@ -49,14 +55,17 @@ class BioGalleryState extends MusicBeatState
 	var divider:FlxSprite;
 	var scanBar:FlxSprite;
 	var ring:FlxSprite;
+	var checker:FlxBackdrop;
+	var checkSpeed:Float = 0;
+	var ringCX:Float = 0;
 
 	var nameText:FlxText;
 	var roleText:FlxText;
 	var tabText:FlxText;
 	var bioText:FlxText;
 	var counterText:FlxText;
-	var leftArrow:FlxText;
-	var rightArrow:FlxText;
+	var leftArrow:FlxSprite;
+	var rightArrow:FlxSprite;
 
 	var page:Int = 0;
 	var fullBio:String = '';
@@ -67,7 +76,12 @@ class BioGalleryState extends MusicBeatState
 
 	static inline var STRIP_Y:Float = 460;
 	static inline var STRIP_H:Float = 120;
-	static inline var ICON_SPACING:Float = 125;
+	static inline var MAX_SPACING:Float = 190;   // separacion maxima entre iconos
+	static inline var MIN_SPACING:Float = 110;   // separacion minima (si hay muchos, la tira se desplaza)
+	static inline var ARROW_MARGIN:Float = 80;   // espacio reservado para las flechas
+	static inline var ICON_SEL:Float = 96;       // tamano (px) del icono seleccionado
+	static inline var ICON_IDLE:Float = 62;      // tamano (px) de los demas
+	static inline var ICON_BIG:Float = 88;       // tamano (px) del icono junto al nombre
 
 	override function create()
 	{
@@ -94,13 +108,14 @@ class BioGalleryState extends MusicBeatState
 		var bg:FlxSprite = Neon.gradient(ww, FlxG.height);
 		bg.x = wx;
 		add(bg);
+		makeChecker();
 		add(Neon.scanlines(ww, FlxG.height, wx));
 
 		// ---- Titulo ----
 		var title:FlxText = Neon.styleText(new FlxText(wx + 60, 20, 0, 'ARCHIVO DE PERSONAJES'), Neon.MAGENTA, 34);
 		add(title);
 
-		counterText = Neon.styleText(new FlxText(0, 28, 0, ''), Neon.CYAN, 24);
+		counterText = Neon.styleText(new FlxText(0, 84, 0, ''), Neon.CYAN, 24);
 		add(counterText);
 
 		var line:FlxSprite = new FlxSprite(wx + 60, 74).makeGraphic(ww - 120, 3, Neon.CYAN);
@@ -161,25 +176,137 @@ class BioGalleryState extends MusicBeatState
 
 		var cy:Float = STRIP_Y + STRIP_H / 2;
 
-		ring = new FlxSprite(FlxG.width / 2 - 62, cy - 62).makeGraphic(124, 124, FlxColor.TRANSPARENT, true);
+		ring = new FlxSprite(0, cy - 62).makeGraphic(124, 124, FlxColor.TRANSPARENT, true);
 		add(ring);
 
 		for (i in 0...bios.length)
 		{
 			var ic:HealthIcon = new HealthIcon(bios[i].icon);
+			ic.origin.set(ic.frameWidth * 0.5, ic.frameHeight * 0.5);
+			var s:Float = ICON_IDLE / Math.max(ic.frameWidth, ic.frameHeight);
+			ic.scale.set(s, s);
 			add(ic);
 			icons.push(ic);
-			iconCX.push(FlxG.width / 2 + (i - curSelected) * ICON_SPACING);
+			iconCX.push(stripTargetX(i));
+			placeIcon(ic, iconCX[i], cy);
 		}
+		ringCX = stripTargetX(curSelected);
 
-		leftArrow = Neon.styleText(new FlxText(wx + 48, cy - 28, 0, '<'), Neon.MAGENTA, 52);
-		rightArrow = Neon.styleText(new FlxText(wx + ww - 48 - 30, cy - 28, 0, '>'), Neon.MAGENTA, 52);
+		// ---- Flechas (chevrones dibujados, no dependen de la fuente) ----
+		leftArrow = makeArrow(true);
+		leftArrow.setPosition(wx + 30 + 24, cy - leftArrow.height / 2);
+		rightArrow = makeArrow(false);
+		rightArrow.setPosition(wx + ww - 30 - 24 - rightArrow.width, cy - rightArrow.height / 2);
 		add(leftArrow);
 		add(rightArrow);
 
 		selectIndex(curSelected, true);
 
-		addTouchPad('LEFT_RIGHT', 'A_B');
+		addSafePad();
+	}
+
+	// ------------------------------------------------------------------
+	// Utilidades de interfaz
+	// ------------------------------------------------------------------
+
+	// Usa solo modos de touchpad que existen (evita el error "actionMode doesn't exist")
+	function addSafePad():Void
+	{
+		var dpad:String = 'NONE';
+		for (m in ['LEFT_RIGHT', 'LEFT_FULL', 'UP_LEFT_RIGHT', 'FULL'])
+			if (MobileData.dpadModes.exists(m)) { dpad = m; break; }
+
+		var action:String = 'NONE';
+		for (m in ['A_B', 'A_B_X_Y', 'A_B_C_X_Y'])
+			if (MobileData.actionModes.exists(m)) { action = m; break; }
+
+		addTouchPad(dpad, action);
+	}
+
+	// Fondo de cuadros animado: usa el mismo PNG del Freeplay (images/freeplay/check.png o checker.png).
+	// Si no se encuentra, dibuja uno propio para que SIEMPRE se vea.
+	function makeChecker():Void
+	{
+		var imgScale:Float = FlxG.height / 720;
+		var graphic:FlxGraphic = null;
+
+		for (k in ['freeplay/check', 'freeplay/checker'])
+		{
+			if (Paths.fileExists('images/' + k + '.png', AssetType.IMAGE))
+			{
+				graphic = Paths.image(k);
+				break;
+			}
+		}
+
+		if (graphic == null)
+		{
+			var tile:Int = 64;
+			var bmp:BitmapData = new BitmapData(tile * 2, tile * 2, true, 0x00000000);
+			bmp.fillRect(new Rectangle(0, 0, tile, tile), 0xFFFFFFFF);
+			bmp.fillRect(new Rectangle(tile, tile, tile, tile), 0xFFFFFFFF);
+			graphic = FlxGraphic.fromBitmapData(bmp, false, 'bio_checker_fallback');
+		}
+
+		checker = new FlxBackdrop(graphic, XY);
+		checker.antialiasing = ClientPrefs.data.antialiasing;
+		checker.scale.set(imgScale * 1.4, imgScale * 1.4);
+		checker.updateHitbox();
+		checker.alpha = 0.22;
+		checker.scrollFactor.set();
+		checkSpeed = 34 * imgScale;
+		add(checker);
+	}
+
+	function makeArrow(left:Bool):FlxSprite
+	{
+		var w:Int = 44;
+		var h:Int = 64;
+		var spr:FlxSprite = new FlxSprite().makeGraphic(w, h, FlxColor.TRANSPARENT, true);
+		var pts:Array<FlxPoint> = left
+			? [FlxPoint.get(34, 0), FlxPoint.get(44, 10), FlxPoint.get(16, 32), FlxPoint.get(44, 54), FlxPoint.get(34, 64), FlxPoint.get(0, 32)]
+			: [FlxPoint.get(10, 0), FlxPoint.get(0, 10), FlxPoint.get(28, 32), FlxPoint.get(0, 54), FlxPoint.get(10, 64), FlxPoint.get(44, 32)];
+		FlxSpriteUtil.drawPolygon(spr, pts, FlxColor.WHITE);
+		spr.color = Neon.MAGENTA;
+		return spr;
+	}
+
+	// Centro X de cada icono dentro de la tira: reparte los iconos entre las dos flechas.
+	// Si no caben, la tira se desplaza para mantener visible el seleccionado.
+	function stripTargetX(i:Int):Float
+	{
+		var wx:Float = Neon.wideX();
+		var ww:Float = Neon.wideW();
+		var left:Float = wx + 30 + ARROW_MARGIN + 30;
+		var right:Float = wx + ww - 30 - ARROW_MARGIN - 30;
+		var avail:Float = right - left;
+		var n:Int = bios.length;
+
+		var sp:Float = Math.min(MAX_SPACING, avail / n);
+		if (sp < MIN_SPACING) sp = MIN_SPACING;
+
+		var total:Float = sp * n;
+		var base:Float = left + sp * 0.5 + i * sp;
+		if (total <= avail) return base + (avail - total) * 0.5;
+
+		var baseSel:Float = left + sp * 0.5 + curSelected * sp;
+		var scroll:Float = Math.max(0, Math.min(total - avail, baseSel - (left + right) * 0.5));
+		return base - scroll;
+	}
+
+	// Coloca el CENTRO VISUAL del icono en (cx, cy), sin depender de offsets/hitbox de HealthIcon
+	inline function placeIcon(ic:HealthIcon, cx:Float, cy:Float):Void
+		ic.setPosition(cx - ic.origin.x + ic.offset.x, cy - ic.origin.y + ic.offset.y);
+
+	inline function sizeScale(ic:HealthIcon, size:Float):Float
+		return size / Math.max(ic.frameWidth, ic.frameHeight);
+
+	inline function mouseNear(cx:Float, cy:Float, halfW:Float, halfH:Float):Bool
+	{
+		var mp:FlxPoint = FlxG.mouse.getWorldPosition(FlxG.camera);
+		var hit:Bool = Math.abs(mp.x - cx) <= halfW && Math.abs(mp.y - cy) <= halfH;
+		mp.put();
+		return hit;
 	}
 
 	// ------------------------------------------------------------------
@@ -303,6 +430,23 @@ class BioGalleryState extends MusicBeatState
 
 		counterText.text = pad(idx + 1) + ' / ' + pad(bios.length);
 		counterText.x = Neon.wideX() + Neon.wideW() - 60 - counterText.width;
+		counterText.y = 84; // debajo de la linea, lejos del contador de FPS
+
+		FlxTween.cancelTweensOf(checker);
+		FlxTween.cancelTweensOf(leftArrow);
+		FlxTween.cancelTweensOf(rightArrow);
+		if (silent)
+		{
+			checker.color = b.accent;
+			leftArrow.color = b.accent;
+			rightArrow.color = b.accent;
+		}
+		else
+		{
+			FlxTween.color(checker, 0.25, checker.color, b.accent);
+			FlxTween.color(leftArrow, 0.25, leftArrow.color, b.accent);
+			FlxTween.color(rightArrow, 0.25, rightArrow.color, b.accent);
+		}
 
 		loadPortrait(b);
 		showPage();
@@ -347,9 +491,10 @@ class BioGalleryState extends MusicBeatState
 			bigIcon = null;
 		}
 		bigIcon = new HealthIcon(b.icon);
-		bigIcon.scale.set(0.6, 0.6);
-		bigIcon.updateHitbox();
-		bigIcon.setPosition(iconFrame.x + (iconFrame.width - bigIcon.width) / 2, iconFrame.y + (iconFrame.height - bigIcon.height) / 2);
+		bigIcon.origin.set(bigIcon.frameWidth * 0.5, bigIcon.frameHeight * 0.5);
+		var bs:Float = sizeScale(bigIcon, ICON_BIG);
+		bigIcon.scale.set(bs, bs);
+		placeIcon(bigIcon, iconFrame.x + iconFrame.width / 2, iconFrame.y + iconFrame.height / 2);
 		bigIcon.alpha = 0;
 		add(bigIcon);
 		FlxTween.tween(bigIcon, {alpha: 1}, 0.25);
@@ -411,25 +556,39 @@ class BioGalleryState extends MusicBeatState
 		scanTime += elapsed;
 		scanBar.y = portraitPanel.y + 10 + ((scanTime * 110) % (portraitPanel.height - 24));
 
+		// Fondo de cuadros en movimiento
+		checker.x += checkSpeed * elapsed;
+		checker.y += checkSpeed * elapsed;
+
 		// Iconos de la tira
+		var wx:Float = Neon.wideX();
+		var ww:Float = Neon.wideW();
 		var cy:Float = STRIP_Y + STRIP_H / 2;
-		var halfView:Float = Neon.wideW() / 2 - 90;
+		var viewL:Float = wx + 30 + ARROW_MARGIN;
+		var viewR:Float = wx + ww - 30 - ARROW_MARGIN;
 		for (i in 0...icons.length)
 		{
-			var off:Int = i - curSelected;
 			var ic:HealthIcon = icons[i];
-			var isSel:Bool = (off == 0);
+			var isSel:Bool = (i == curSelected);
 
-			iconCX[i] = lerpTo(iconCX[i], FlxG.width / 2 + off * ICON_SPACING, elapsed * 12);
+			iconCX[i] = lerpTo(iconCX[i], stripTargetX(i), elapsed * 12);
 
-			var sc:Float = lerpTo(ic.scale.x, isSel ? 0.7 : 0.48, elapsed * 14);
+			var sc:Float = lerpTo(ic.scale.x, sizeScale(ic, isSel ? ICON_SEL : ICON_IDLE), elapsed * 14);
 			ic.scale.set(sc, sc);
-			ic.updateHitbox();
-			ic.setPosition(iconCX[i] - ic.width / 2, cy - ic.height / 2);
+			placeIcon(ic, iconCX[i], cy);
 
-			var visibleInStrip:Bool = Math.abs(iconCX[i] - FlxG.width / 2) <= halfView;
-			ic.alpha = visibleInStrip ? (isSel ? 1 : 0.55) : 0;
+			var inView:Bool = iconCX[i] >= viewL && iconCX[i] <= viewR;
+			ic.alpha = inView ? (isSel ? 1 : 0.6) : 0;
 		}
+
+		// Marco de seleccion: sigue al icono elegido
+		ringCX = lerpTo(ringCX, stripTargetX(curSelected), elapsed * 14);
+		ring.setPosition(ringCX - ring.width / 2, cy - ring.height / 2);
+
+		// Flechas: palpitan suavemente
+		var pulse:Float = 0.75 + 0.25 * Math.sin(scanTime * 5);
+		leftArrow.alpha = pulse;
+		rightArrow.alpha = pulse;
 
 		// Texto que se escribe poco a poco
 		if (shown < fullBio.length)
@@ -458,16 +617,17 @@ class BioGalleryState extends MusicBeatState
 			return;
 		}
 
-		// Toque / mouse
+		// Toque / mouse (areas de toque manuales: no dependen del hitbox de los sprites)
 		if (FlxG.mouse.justPressed)
 		{
-			if (FlxG.mouse.overlaps(leftArrow, FlxG.camera)) { changeItem(-1); return; }
-			if (FlxG.mouse.overlaps(rightArrow, FlxG.camera)) { changeItem(1); return; }
-			if (FlxG.mouse.overlaps(tabText, FlxG.camera)) { togglePage(); return; }
+			var cy2:Float = STRIP_Y + STRIP_H / 2;
+			if (mouseNear(leftArrow.x + leftArrow.width / 2, cy2, 60, 70)) { changeItem(-1); return; }
+			if (mouseNear(rightArrow.x + rightArrow.width / 2, cy2, 60, 70)) { changeItem(1); return; }
+			if (mouseNear(tabText.x + tabText.fieldWidth / 2, tabText.y + 14, tabText.fieldWidth / 2 + 30, 34)) { togglePage(); return; }
 
 			for (i in 0...icons.length)
 			{
-				if (icons[i].alpha > 0.1 && FlxG.mouse.overlaps(icons[i], FlxG.camera))
+				if (icons[i].alpha > 0.1 && mouseNear(iconCX[i], cy2, 50, STRIP_H / 2))
 				{
 					if (i == curSelected) togglePage();
 					else selectIndex(i);
