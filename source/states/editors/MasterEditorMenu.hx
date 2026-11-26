@@ -44,7 +44,6 @@ class MasterEditorMenu extends MusicBeatState
 		'Dialogue Editor',
 		'Dialogue Portrait Editor',
 		'Note Splash Editor',
-		'Menu Editor',
 		'Credits Editor'
 	];
 
@@ -59,7 +58,6 @@ class MasterEditorMenu extends MusicBeatState
 		'Write and edit in-game dialogue',
 		'Edit dialogue character portraits',
 		'Tune note splash animations',
-		'Edit menu items and layout',
 		'Edit the credits list'
 	];
 
@@ -716,8 +714,6 @@ class MasterEditorMenu extends MusicBeatState
 				LoadingState.loadAndSwitchState(new DialogueCharacterEditorState(), false);
 			case 'Note Splash Editor':
 				MusicBeatState.switchState(new NoteSplashEditorState());
-			case 'Menu Editor':
-				MusicBeatState.switchState(new MenuEditorState());
 			case 'Credits Editor':
 				MusicBeatState.switchState(new CreditsEditorState());
 		}
